@@ -1,18 +1,24 @@
 from dataclasses import dataclass
+from typing import Protocol
 
-from ..domain.repositories import UserRepository
-from ..infrastructure.security.password import verify_password
-from ..infrastructure.security.jwt import create_access_token
+from app.modules.auth.infrastructure.security.password import verify_password
+from app.modules.auth.infrastructure.security.jwt import create_access_token
+
+
+class UserRepository(Protocol):
+    async def get_by_email(self, email: str): ...
+
 
 @dataclass
 class LoginCommand:
     email: str
     password: str
 
+
 class LoginHandler:
     def __init__(self, user_repo: UserRepository):
         self.user_repo = user_repo
-    
+
     async def handle(self, cmd: LoginCommand) -> str:
         user = await self.user_repo.get_by_email(cmd.email)
 
@@ -24,7 +30,7 @@ class LoginHandler:
 
         token = create_access_token(
             subject=str(user.id),
-            role=user.role.value,
+            role=user.role,
         )
 
         return token

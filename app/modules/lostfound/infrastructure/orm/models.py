@@ -2,7 +2,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, DateTime, ForeignKey
 from uuid import uuid4
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from app.shared.infrastructure.db import Base
 
@@ -10,10 +10,7 @@ from app.shared.infrastructure.db import Base
 class ItemModel(Base):
     __tablename__ = "items"
 
-    id: Mapped[str] = mapped_column(
-        primary_key=True,
-        default=lambda: str(uuid4()),
-    )
+    id: Mapped[int] = mapped_column(primary_key=True)
 
     title: Mapped[str] = mapped_column(String(255))
     description_public: Mapped[str] = mapped_column(String(1000))
@@ -31,55 +28,50 @@ class ItemModel(Base):
     )
 
     verification_questions: Mapped[List["VerificationQuestionModel"]] = relationship(
-        back_populates="item",
-        cascade="all, delete-orphan",
+        back_populates="item"
     )
 
 
 class VerificationQuestionModel(Base):
     __tablename__ = "verification_questions"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
 
-    item_id: Mapped[str] = mapped_column(
-        ForeignKey("items.id", ondelete="CASCADE"),
+    question: Mapped[str]
+
+    item_id: Mapped[int] = mapped_column(
+        ForeignKey("items.id")
     )
 
-    question: Mapped[str] = mapped_column(String(255))
-
-    item = relationship(back_populates="verification_questions")
+    item: Mapped["ItemModel"] = relationship(
+        back_populates="verification_questions"
+    )
 
 
 class ClaimModel(Base):
     __tablename__ = "claims"
 
-    id: Mapped[str] = mapped_column(primary_key=True)
-    item_id: Mapped[str] = mapped_column(
-        ForeignKey("items.id", ondelete="CASCADE")
-    )
+    id: Mapped[int] = mapped_column(primary_key=True)
 
-    claimant_user_id: Mapped[str] = mapped_column(String(36))
-    status: Mapped[str] = mapped_column(String(20))
-    submitted_at: Mapped[datetime] = mapped_column(DateTime)
-
-    answers: Mapped[List["ClaimAnswerModel"]] = relationship(
-        back_populates="claim",
-        cascade="all, delete-orphan",
+    answers: Mapped[list["ClaimAnswerModel"]] = relationship(
+        back_populates="claim"
     )
 
 
 class ClaimAnswerModel(Base):
     __tablename__ = "claim_answers"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
 
-    claim_id: Mapped[str] = mapped_column(
-        ForeignKey("claims.id", ondelete="CASCADE")
+    answer: Mapped[str]
+
+    claim_id: Mapped[int] = mapped_column(
+        ForeignKey("claims.id")
     )
 
-    answer: Mapped[str] = mapped_column(String(255))
-
-    claim = relationship(back_populates="answers")
+    claim: Mapped["ClaimModel"] = relationship(
+        back_populates="answers"
+    )
 
 
 class AuditLogModel(Base):

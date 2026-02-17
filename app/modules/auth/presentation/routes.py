@@ -4,7 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.shared.infrastructure.db import get_session
 from ..application.login import LoginHandler, LoginCommand
-from ..infrastructure.repositories.user_repo_sql import UserRepositorySQL
+from ..infrastructure.repositories.user_repo_sql import UserRepository 
+
+from .role_guard import require_roles
+from ..domain.user_role import UserRole
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -17,7 +20,7 @@ async def login(
     req: LoginRequest,
     session: AsyncSession = Depends(get_session),
 ):
-    handler = LoginHandler(UserRepositorySQL(session))
+    handler = LoginHandler(UserRepository(session))
 
     try:
         token = await handler.handle(LoginCommand(
@@ -32,3 +35,14 @@ async def login(
         )
     
     return {"access_token": token, "token_type": "bearer"}
+
+@router.get("/protected")
+async def protected_test(user=Depends(require_roles([UserRole.ADMIN]))):
+    return {
+        "message": "Only Admin can access this endpoint",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "role": user.role,
+        }
+    }
