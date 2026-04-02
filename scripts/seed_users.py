@@ -1,35 +1,48 @@
 import asyncio
+import sys
+from pathlib import Path
 
-from sqlalchemy import text
+from sqlalchemy import select
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from app.modules.auth.infrastructure.orm.models import UserModel, pwd_context
 from app.shared.infrastructure.db import AsyncSessionLocal
 
 
+DEFAULT_USERS = (
+    ("admin@example.com", "123456", "ADMIN"),
+    ("owner@example.com", "123456", "OWNER"),
+    ("finder@example.com", "123456", "FINDER"),
+)
+
+
 async def seed_users():
     async with AsyncSessionLocal() as session:
-        await session.execute(text("DELETE FROM users"))
+        for email, password, role in DEFAULT_USERS:
+            existing_user = await session.scalar(
+                select(UserModel).where(UserModel.email == email).limit(1)
+            )
 
-        admin = UserModel(
-            email="admin@example.com",
-            password_hash=pwd_context.hash("123456"),
-            role="ADMIN",
-        )
-        owner = UserModel(
-            email="owner@example.com",
-            password_hash=pwd_context.hash("123456"),
-            role="OWNER",
-        )
-        finder = UserModel(
-            email="finder@example.com",
-            password_hash=pwd_context.hash("123456"),
-            role="FINDER",
-        )
+            if existing_user is None:
+                user = UserModel(
+                    email=email,
+                    password_hash=pwd_context.hash(password),
+                    role=role,
+                    is_active=True,
+                )
+                session.add(user)
+            else:
+                user = existing_user
+                user.password_hash = pwd_context.hash(password)
+                user.role = role
+                user.is_active = True
 
-        session.add_all([admin, owner, finder])
         await session.commit()
 
-        print("Seeded users:")
+        print("Seeded default users:")
         print("  admin@example.com / 123456")
         print("  owner@example.com / 123456")
         print("  finder@example.com / 123456")

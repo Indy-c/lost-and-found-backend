@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     claim_submit_rate_window_seconds: int = 300
     claim_decision_rate_limit: int = 20
     claim_decision_rate_window_seconds: int = 60
+    auto_create_schema_on_startup: bool = True
+    repair_schema_on_startup: bool = True
 
 
 settings = Settings()

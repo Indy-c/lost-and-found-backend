@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 from fastapi import FastAPI
@@ -11,6 +12,7 @@ from app.modules.auth.presentation.routes import router as auth_routes_router
 from app.modules.lostfound.infrastructure.orm import models as lostfound_models  # noqa: F401
 from app.modules.lostfound.presentation.routes.claims import router as claims_router
 from app.modules.lostfound.presentation.routes.items import router as items_router
+from app.shared.infrastructure.settings import settings
 
 LOSTFOUND_TABLES = (
     "claim_answers",
@@ -39,13 +41,6 @@ EXPECTED_LOSTFOUND_COLUMNS = {
     "claim_answers": {"id", "answer", "claim_id"},
     "audit_logs": {"id", "actor_user_id", "action", "target_type", "target_id", "created_at"},
 }
-
-app = FastAPI()
-
-app.include_router(auth_routes_router)
-app.include_router(admin_routes_router)
-app.include_router(items_router)
-app.include_router(claims_router)
 
 
 def _has_legacy_lostfound_schema(sync_conn) -> bool:
@@ -112,9 +107,25 @@ def _repair_users_schema(sync_conn) -> None:
         )
 
 
-@app.on_event("startup")
 async def startup():
     async with engine.begin() as conn:
-        await conn.run_sync(_archive_legacy_lostfound_tables)
-        await conn.run_sync(_repair_users_schema)
-        await conn.run_sync(Base.metadata.create_all)
+        if settings.repair_schema_on_startup:
+            await conn.run_sync(_archive_legacy_lostfound_tables)
+            await conn.run_sync(_repair_users_schema)
+
+        if settings.auto_create_schema_on_startup:
+            await conn.run_sync(Base.metadata.create_all)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await startup()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
+app.include_router(auth_routes_router)
+app.include_router(admin_routes_router)
+app.include_router(items_router)
+app.include_router(claims_router)
