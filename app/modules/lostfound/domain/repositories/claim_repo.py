@@ -1,14 +1,18 @@
 from abc import ABC, abstractmethod
-from typing import Optional, List
-from uuid import UUID
 from datetime import datetime
+from typing import List, Optional
+from uuid import UUID
 
 from ..entities.claim import Claim
 
-class ClaimRepository(ABC):
 
+class ClaimRepository(ABC):
     @abstractmethod
     async def get_by_id(self, claim_id: UUID) -> Optional[Claim]:
+        pass
+
+    @abstractmethod
+    async def get_by_id_for_update(self, claim_id: UUID) -> Optional[Claim]:
         pass
 
     @abstractmethod
@@ -16,7 +20,7 @@ class ClaimRepository(ABC):
         self,
         claim_id: UUID,
         item_id: UUID,
-        claimant_user_id: UUID,
+        claimant_user_id: int,
         answers: List[str],
         submitted_at: datetime,
     ) -> None:
@@ -24,4 +28,8 @@ class ClaimRepository(ABC):
 
     @abstractmethod
     async def save(self, claim: Claim) -> None:
+        pass
+
+    @abstractmethod
+    async def list_by_item(self, item_id: UUID) -> list[Claim]:
         pass

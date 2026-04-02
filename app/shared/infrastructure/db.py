@@ -6,8 +6,7 @@ from sqlalchemy.ext.asyncio import (
     AsyncSession,
 )
 from sqlalchemy.orm import DeclarativeBase
-
-DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/lostfound"
+from app.shared.infrastructure.settings import settings
 
 
 class Base(DeclarativeBase):
@@ -15,8 +14,8 @@ class Base(DeclarativeBase):
 
 
 engine = create_async_engine(
-    DATABASE_URL,
-    echo=True,
+    settings.database_url,
+    echo=settings.db_echo,
 )
 
 

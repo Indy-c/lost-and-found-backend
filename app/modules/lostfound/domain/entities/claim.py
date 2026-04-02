@@ -9,7 +9,8 @@ from ..value_objects.claim_status import ClaimStatus
 class Claim:
     id: UUID
     item_id: UUID
-    claimant_user_id: UUID
+    claimant_user_id: int
+    answers: list[str]
     status: ClaimStatus
     submitted_at: datetime
 

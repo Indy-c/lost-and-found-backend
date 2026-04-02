@@ -1,26 +1,38 @@
 import asyncio
 
-from app.shared.infrastructure.db import AsyncSessionLocal
-from app.modules.auth.infrastructure.orm.models import UserModel, pwd_context
 from sqlalchemy import text
+
+from app.modules.auth.infrastructure.orm.models import UserModel, pwd_context
+from app.shared.infrastructure.db import AsyncSessionLocal
 
 
 async def seed_users():
     async with AsyncSessionLocal() as session:
-
-        # Clear existing users
         await session.execute(text("DELETE FROM users"))
 
-        user = UserModel(
+        admin = UserModel(
             email="admin@example.com",
             password_hash=pwd_context.hash("123456"),
             role="ADMIN",
         )
+        owner = UserModel(
+            email="owner@example.com",
+            password_hash=pwd_context.hash("123456"),
+            role="OWNER",
+        )
+        finder = UserModel(
+            email="finder@example.com",
+            password_hash=pwd_context.hash("123456"),
+            role="FINDER",
+        )
 
-        session.add(user)
+        session.add_all([admin, owner, finder])
         await session.commit()
 
-        print("Seeded user: admin@example.com / 123456")
+        print("Seeded users:")
+        print("  admin@example.com / 123456")
+        print("  owner@example.com / 123456")
+        print("  finder@example.com / 123456")
 
 
 if __name__ == "__main__":

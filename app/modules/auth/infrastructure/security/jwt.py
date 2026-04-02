@@ -2,11 +2,11 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from jose import jwt, JWTError
+from app.shared.infrastructure.settings import settings
 
-
-SECRET_KEY = "SECRET_KEY"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY = settings.jwt_secret_key
+ALGORITHM = settings.jwt_algorithm
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.jwt_access_token_expire_minutes
 
 
 def create_access_token(

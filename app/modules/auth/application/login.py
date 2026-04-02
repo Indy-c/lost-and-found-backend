@@ -20,10 +20,18 @@ class LoginHandler:
         self.user_repo = user_repo
 
     async def handle(self, cmd: LoginCommand) -> str:
-        user = await self.user_repo.get_by_email(cmd.email)
+        email = cmd.email.strip().lower()
+
+        if not email or not cmd.password:
+            raise ValueError("Invalid email or password.")
+
+        user = await self.user_repo.get_by_email(email)
 
         if not user:
             raise ValueError("Invalid email or password.")
+
+        if not user.is_active:
+            raise ValueError("Your account is inactive.")
 
         if not verify_password(cmd.password, user.password_hash):
             raise ValueError("Invalid email or password.")

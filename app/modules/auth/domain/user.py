@@ -1,12 +1,14 @@
 from dataclasses import dataclass
-from uuid import UUID
+from datetime import datetime
 
 from .user_role import UserRole
 
 
 @dataclass
 class User:
-    id: UUID
+    id: int
     email: str
     password_hash: str
     role: UserRole
+    is_active: bool
+    created_at: datetime

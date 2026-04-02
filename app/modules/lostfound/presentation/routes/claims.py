@@ -1,40 +1,61 @@
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.shared.infrastructure.db import get_session
 from app.modules.auth.presentation.deps import get_current_user
-from app.modules.auth.presentation.deps import require_roles
-from app.modules.auth.domain.user_role import UserRole
+from app.shared.infrastructure.db import get_session
+from app.shared.infrastructure.rate_limit import rate_limit
+from app.shared.infrastructure.settings import settings
 
-from ...application.commands.decide_claim import (
-    DecideClaimHandler,
-    DecideClaimCommand,
-)
-
+from ...application.commands.decide_claim import DecideClaimCommand, DecideClaimHandler
+from ...infrastructure.repositories.audit_repo_sql import AuditLogRepositorySQL
 from ...infrastructure.repositories.claim_repo_sql import ClaimRepositorySQL
 from ...infrastructure.repositories.item_repo_sql import ItemRepositorySQL
 
 
-router = APIRouter()
+router = APIRouter(tags=["claims"])
+
+
+def _raise_claim_error(exc: ValueError) -> None:
+    detail = str(exc)
+    status_code = status.HTTP_400_BAD_REQUEST
+
+    if "not found" in detail.lower():
+        status_code = status.HTTP_404_NOT_FOUND
+    elif "only" in detail.lower():
+        status_code = status.HTTP_403_FORBIDDEN
+
+    raise HTTPException(status_code=status_code, detail=detail) from exc
 
 
 class DecideRequest(BaseModel):
-    decision: str   # APPROVE or REJECT
+    decision: str
 
 
-@router.post("/claims/{claim_id}/decision")
+@router.post(
+    "/claims/{claim_id}/decision",
+    dependencies=[
+        Depends(
+            rate_limit(
+                "claims:decision",
+                limit=settings.claim_decision_rate_limit,
+                window_seconds=settings.claim_decision_rate_window_seconds,
+            )
+        )
+    ],
+)
 async def decide_claim(
     claim_id: UUID,
     req: DecideRequest,
-    user=Depends(require_roles([UserRole.OWNER])),
+    user=Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-
     handler = DecideClaimHandler(
         item_repo=ItemRepositorySQL(session),
         claim_repo=ClaimRepositorySQL(session),
+        audit_repo=AuditLogRepositorySQL(session),
     )
 
     try:
@@ -45,7 +66,9 @@ async def decide_claim(
                 actor_user_id=user.id,
             )
         )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        await session.commit()
+    except ValueError as exc:
+        await session.rollback()
+        _raise_claim_error(exc)
 
     return {"status": "ok"}
